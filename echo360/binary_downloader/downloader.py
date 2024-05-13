@@ -17,22 +17,22 @@ class BinaryDownloader(object):
         arch = "64" if sys.maxsize > 2**32 else "32"
         if "linux" in sys.platform:
             if arch == "64":
-                return self._os_linux_64
+                return "linux_64"
             else:
-                return self._os_linux_32
+                return "linux_32"
         elif "win32" in sys.platform:
             if arch == "64":
-                return self._os_windows_64
+                return "windows_64"
             else:
-                return self._os_windows_32
+                return "windows_32"
         elif "darwin" in sys.platform:
             # detect if this is using arm processor (e.g. M1/M2 Mac)
             if platform.processor() == "arm":
-                return self._os_darwin_arm
+                return "darwin_arm"
             if arch == "64":
-                return self._os_darwin_64
+                return "darwin_64"
             else:
-                return self._os_darwin_32
+                return "darwin_32"
         else:
             raise Exception("NON-EXISTING OS VERSION")
 
@@ -47,9 +47,7 @@ class BinaryDownloader(object):
 
     def download(self):
         print(
-            '>> Downloading {0} binary file for "{1}"'.format(
-                self._name, self.get_os_suffix()
-            )
+            f'>> Downloading {self._name} binary file for "{self.get_os_suffix()}"'
         )
         # Download bin for this os
         link, filename = self.get_download_link()
@@ -59,11 +57,11 @@ class BinaryDownloader(object):
             shutil.rmtree(bin_path)
         os.makedirs(bin_path)
         # remove existing binary file or folder
-        wget.download(link, out="{0}/{1}".format(bin_path, filename))
-        print('\r\n>> Extracting archive file "{0}"'.format(filename))
+        wget.download(link, out=f"{bin_path}/{filename}")
+        print(f'\r\n>> Extracting archive file "{filename}"')
         if sys.version_info >= (3, 0):  # compatibility for python 2 & 3
             shutil.unpack_archive(
-                "{0}/{1}".format(bin_path, filename), extract_dir=bin_path
+                f"{bin_path}/{filename}", extract_dir=bin_path
             )
         else:
             if ".zip" in filename:
