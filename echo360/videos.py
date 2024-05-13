@@ -6,15 +6,18 @@ import operator
 import sys
 import tqdm
 
+from urllib.parse import urlparse
 import ffmpy
 import requests
 import selenium
 import logging
 
+import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from .hls_downloader import Downloader
 from .naive_m3u8_parser import NaiveM3U8Parser
@@ -24,8 +27,8 @@ _LOGGER = logging.getLogger(__name__)
 
 def update_course_retrieval_progress(current, total):
     prefix = ">> Retrieving echo360 Course Info... "
-    status = "{}/{} videos".format(current, total)
-    text = "\r{0} {1} ".format(prefix, status)
+    status = f"{current}/{total} videos"
+    text = f"\r{prefix} {status} "
     sys.stdout.write(text)
     sys.stdout.flush()
 
@@ -34,7 +37,7 @@ class EchoVideos(object):
     def __init__(self, videos_json, driver):
         assert videos_json is not None
         self._driver = driver
-        self._videos = []
+        self._videos: list[EchoVideo] = []
         total_videos_num = len(videos_json)
         update_course_retrieval_progress(0, total_videos_num)
 
@@ -55,7 +58,7 @@ class EchoVideos(object):
 
 
 class EchoVideo(object):
-    def __init__(self, video_json, driver):
+    def __init__(self, video_json:dict, driver:WebDriver ):
         self._driver = driver
 
         try:
@@ -88,8 +91,8 @@ class EchoVideo(object):
                     EC.presence_of_element_located((By.ID, "content-player"))
                 )
                 return (
-                    self._driver.find_element_by_id("content-player")
-                    .find_element_by_tag_name("video")
+                    self._driver.find_element(By.ID, "content-player")
+                    .find_element(By.TAG_NAME, "video")
                     .get_attribute("src")
                 )
             except selenium.common.exceptions.TimeoutException:
@@ -468,12 +471,6 @@ class EchoCloudVideo(EchoVideo):
             m3u8urls = [m["uri"] for m in manifests]
             # somehow the hostname for these urls are from amazon (probably offloading
             # to them.) We need to set the host back to echo360.org
-            try:
-                # python3
-                from urllib.parse import urlparse
-            except ImportError:
-                # python2
-                from urlparse import urlparse
             new_m3u8urls = []
             new_hostname = urlparse(self.hostname).netloc
             for url in m3u8urls:
