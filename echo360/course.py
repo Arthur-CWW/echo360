@@ -1,3 +1,4 @@
+from functools import cached_property
 import json
 import re
 import sys
@@ -21,17 +22,18 @@ class EchoCourse:
     def __init__(self, uuid, hostname=None, alternative_feeds=False):
         self._course_id:Optional[str] = None
         self._course_name:Optional[str] = None
-        self._uuid:str = uuid
+        self.uuid:str = uuid
         self._videos:Optional[EchoVideos] = None
         self._alternative_feeds = alternative_feeds
         if hostname is None:
-            self._hostname = "https://view.streaming.sydney.edu.au:8443"
+            self.hostname = "https://view.streaming.sydney.edu.au:8443"
         else:
-            self._hostname = hostname
+            self.hostname = hostname
 
-    def get_videos(self):
-        if self.driver is None:
-            self._blow_up("webdriver not set yet!!!", "")
+    @cached_property
+    def videos(self):
+        # if self.driver is None:
+        assert self.driver is not None, "webdriver not set yet!!!"
         if not self._videos:
             try:
                 course_data_json = self._get_course_data()
@@ -45,31 +47,23 @@ class EchoCourse:
                 )
             except selenium.common.exceptions.NoSuchElementException as e:
                 self._blow_up("selenium cannot find given elements", e)
-
+        assert self._videos is not None, "videos is not set"
         return self._videos
 
-    @property
-    def uuid(self):
-        return self._uuid
-
-    @property
-    def hostname(self):
-        return self._hostname
 
     @property
     def url(self):
-        return f"{self._hostname}/ess/portal/section/{self._uuid}"
+        return f"{self.hostname}/ess/portal/section/{self.uuid}"
 
     @property
     def video_url(self):
-        return f"{self._hostname}/ess/client/api/sections/{self._uuid}/section-data.json?pageSize=100"
+        return f"{self.hostname}/ess/client/api/sections/{self.uuid}/section-data.json?pageSize=100"
 
 
     @property
     def course_id(self):
         if self._course_id is None:
             try:
-                # driver = webdriver.PhantomJS() #TODO Redo this. Maybe use a singleton factory to request the lecho360 driver?s
                 self.driver.get(
                     self.url
                 )  # Initialize to establish the 'anon' cookie that Echo360 sends.
@@ -83,6 +77,7 @@ class EchoCourse:
                     "Unable to parse course id (e.g. CS473) from JSON (course_data)", e
                 )
 
+        assert self._course_id is not None, "course_id could not be set"
         return self._course_id
 
     @property
@@ -90,12 +85,6 @@ class EchoCourse:
         if self._course_name is None:
             self.course_id
         return self._course_name
-
-    # @property
-    # def driver(self):
-    #     if self._driver is None:
-    #         self._blow_up("webdriver not set yet!!!", "")
-    #     return self._driver
 
     @property
     def nice_name(self):
@@ -128,7 +117,8 @@ class EchoCloudCourse(EchoCourse):
     def __init__(self, *args, **kwargs):
         super(EchoCloudCourse, self).__init__(*args, **kwargs)
 
-    def get_videos(self):
+    @cached_property
+    def videos(self):
         if self.driver is None:
             raise Exception("webdriver not set yet!!!", "")
         if not self._videos:
@@ -138,9 +128,8 @@ class EchoCloudCourse(EchoCourse):
                 self._videos = EchoCloudVideos(
                     videos_json, self.driver, self.hostname, self._alternative_feeds
                 )
-            # except KeyError as e:
-            #     print("Unable to parse course videos from JSON (course_data)")
-            #     raise e
+            except KeyError as e:
+                assert False, "Unable to parse course videos from JSON (course_data)"
             except selenium.common.exceptions.NoSuchElementException as e:
                 print("selenium cannot find given elements")
                 raise e
@@ -149,7 +138,7 @@ class EchoCloudCourse(EchoCourse):
 
     @property
     def video_url(self):
-        return f"{self._hostname}/section/{self._uuid}/syllabus"
+        return f"{self.hostname}/section/{self.uuid}/syllabus"
 
     @property
     def course_id(self):
