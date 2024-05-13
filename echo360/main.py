@@ -4,10 +4,12 @@ import sys
 import re
 import logging
 import time
+from typing import Literal, Optional
 import selenium
 from datetime import datetime
 from pathlib import Path
 import selenium.common.exceptions
+from selenium.webdriver.remote.webdriver import WebDriver
 
 try:
     import pick
@@ -23,8 +25,6 @@ from .echo_exceptions import EchoLoginError
 from .downloader import EchoDownloader
 from .course import EchoCourse, EchoCloudCourse
 
-_DEFAULT_BEFORE_DATE = datetime(2900, 1, 1).date()
-_DEFAULT_AFTER_DATE = datetime(1100, 1, 1).date()
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -236,25 +236,37 @@ def handle_args():
     )
 
 
-def main():
-    (
-        course_url,
-        course_hostname,
-        output_path,
-        after_date,
-        before_date,
-        username,
-        password,
-        setup_credential,
-        download_binary,
-        webdriver_to_use,
-        interactive_mode,
-        enable_degbug,
-        manual,
-        alternative_feeds,
-        usingEcho360Cloud,
-    ) = handle_args()
 
+# _DEFAULT_BEFORE_DATE = datetime(2900, 1, 1).date()
+# _DEFAULT_AFTER_DATE = datetime(1100, 1, 1).date()
+def main(
+        course_url :str,
+        course_hostname:Optional[str]=None,
+        output:str= 'Lectures',
+        after_date = datetime(1100, 1, 1).date(),
+        before_date = datetime(2900, 1, 1).date(),
+        # username :Optional[str]=None,
+        # password,
+        setup_credential:bool=False,
+        download_binary :bool=False,
+        webdriver_to_use:Literal[ "chrome", "firefox"]="chrome",
+        interactive_mode:bool=False,
+        enable_degbug:bool=False,
+        manual:bool=False,
+        alternative_feeds:bool=False,
+        usingEcho360Cloud:bool=False,
+    ) :
+    '''
+    Main function to download the lectures from echo360
+    :param course_url: str: Full URL of the echo360 course page,
+        "Full URL of the echo360 course page, or only the UUID (which defaults to USYD). The URL of the course's video lecture page,
+        for example: http://recordings.engineering.illinois.edu/ess/portal/section/115f3def-7371-4e98-b72f-6efe53771b2a)",  # noqa
+    :param course_hostname: str: The hostname of the echo360 course page
+    :param output_path: str: Path to the desired output directory. The output directory must exist. Otherwise the current directory is used.
+    '''
+
+    output_path = Path(output)
+    output_path.mkdir(parents=True, exist_ok=True)
     setup_logging(enable_degbug)
 
     if not usingEcho360Cloud and any(
@@ -266,7 +278,7 @@ def main():
         print("-" * 65)
         usingEcho360Cloud = True
         setup_credential = True
-    if usingEcho360Cloud:  # for manual --echo360cloud flag
+    if usingEcho360Cloud:
         setup_credential = True
 
     def cmd_exists(x):
@@ -291,14 +303,7 @@ def main():
         from .binary_downloader.firefoxdriver import (
             FirefoxDownloader as binary_downloader,
         )
-
         binary_type = "geckodriver"
-    else:
-        from .binary_downloader.phantomjs import (
-            PhantomjsDownloader as binary_downloader,
-        )
-
-        binary_type = "phantomjs"
     binary_downloader = binary_downloader()  # initialise class
     _LOGGER.debug(
         "binary_downloader link: %s, bin path: %s",
@@ -340,10 +345,10 @@ def main():
         course,
         output_path,
         date_range=(after_date, before_date),
-        username=username,
-        password=password,
+        username=os.environ.get("ECHO_UNIKEY", ""),
+        password=os.environ.get("ECHO_PASSWORD", ""),
         setup_credential=setup_credential,
-        use_local_binary=use_local_binary,
+        # use_local_binary=use_local_binary,
         webdriver_to_use=webdriver_to_use,
         interactive_mode=interactive_mode,
     )
@@ -378,7 +383,7 @@ def start_download_binary(binary_downloader, binary_type, manual=False):
     print("=" * 65)
 
 
-def run_setup_credential(webdriver, url, echo360_cloud=False, manual=False):
+def run_setup_credential(webdriver:WebDriver, url:str, echo360_cloud=False, manual=False):
     webdriver.get(url)
     # for making it compatiable with Python 2 & 3
     from sys import version_info
@@ -394,17 +399,7 @@ def run_setup_credential(webdriver, url, echo360_cloud=False, manual=False):
             print(" >> After you finished logging in, type 'continue' in the terminal.")
         while True:
             if echo360_cloud and not manual:
-                # for debugging:
-                # import pickle
-                # with open("cookies", "rb") as f:
-                #     for c in pickle.load(f):
-                #         webdriver.add_cookie(c)
-
-                # automatically wait for the Auth Token from webdriver
                 if any("ECHO_JWT" in c["name"] for c in webdriver.get_cookies()):
-                    # with open('cookies', 'wb') as f:
-                    #     pickle.dump(webdriver.get_cookies(), f)
-                    #     exit()
                     break
                 time.sleep(2)
             else:
