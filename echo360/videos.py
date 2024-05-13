@@ -476,9 +476,7 @@ class EchoCloudVideo(EchoVideo):
             for url in m3u8urls:
                 parse_result = urlparse(url)
                 new_m3u8urls.append(
-                    "{}://content.{}{}".format(
-                        parse_result.scheme, new_hostname, parse_result.path
-                    )
+                    f"{parse_result.scheme}://content.{new_hostname}{parse_result.path}"
                 )
             return new_m3u8urls
 
@@ -498,22 +496,22 @@ class EchoCloudVideo(EchoVideo):
             _LOGGER.debug("Trying from_json_mp4 method")
             return from_json_mp4()
         except Exception as e:
-            _LOGGER.debug("Encountered exception: {}".format(e))
+            _LOGGER.debug(f"Encountered exception: {e}")
         try:
             _LOGGER.debug("Trying from_json_m3u8 method")
             m3u8urls = from_json_m3u8()
         except Exception as e:
-            _LOGGER.debug("Encountered exception: {}".format(e))
+            _LOGGER.debug(f"Encountered exception: {e}")
         try:
             _LOGGER.debug("Trying brute_force_all_mp4 method")
             return brute_force_get_mp4_url()
         except Exception as e:
-            _LOGGER.debug("Encountered exception: {}".format(e))
+            _LOGGER.debug(f"Encountered exception: { e}")
         try:
             _LOGGER.debug("Trying brute_force_all_m3u8 method")
             m3u8urls = brute_force_get_url(suffix="m3u8")
         except Exception as e:
-            _LOGGER.debug("Encountered exception: {}".format(e))
+            _LOGGER.debug(f"Encountered exception: {e}")
             _LOGGER.debug("All methods had been exhausted.")
             print("Tried all methods to retrieve videos but all had failed!")
             raise
