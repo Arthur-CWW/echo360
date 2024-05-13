@@ -19,10 +19,8 @@ class ChromedriverDownloader(BinaryDownloader):
 
     def get_download_link(self):
         os_suffix = self.get_os_suffix()
-        filename = "chromedriver_{0}.zip".format(os_suffix)
-        download_link = "{0}/{1}/{2}".format(
-            self._download_link_root, self._version, filename
-        )
+        filename = f"chromedriver_{os_suffix}.zip"
+        download_link = f"{self._download_link_root}/{self._version}/{filename}"
         return download_link, filename
 
     def get_bin_root_path(self):

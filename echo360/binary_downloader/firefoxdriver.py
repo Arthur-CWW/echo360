@@ -21,14 +21,8 @@ class FirefoxDownloader(BinaryDownloader):
 
     def get_download_link(self):
         os_suffix = self.get_os_suffix()
-        filename = "geckodriver-{0}-{1}.{2}".format(
-            self._version,
-            self.get_os_suffix(),
-            "zip" if "win" in self.get_os_suffix() else "tar.gz",
-        )
-        download_link = "{0}/{1}/{2}".format(
-            self._download_link_root, self._version, filename
-        )
+        filename = f"geckodriver-{self._version}-{os_suffix}.{'zip' if 'win' in os_suffix else 'tar.gz'}"
+        download_link = f"{self._download_link_root}/{self._version}/{filename}"
         return download_link, filename
 
     def get_bin_root_path(self):
