@@ -1,20 +1,25 @@
+import time
 import dateutil.parser
 import os
 import sys
 import logging
 import re
 
+from pathlib import Path
+
 from .course import EchoCloudCourse
 from .echo_exceptions import EchoLoginError
-from .utils import naive_versiontuple
+# from .utils import naive_versiontuple
 
-
+from selenium.webdriver.common.keys import Keys
 from pick import pick
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import selenium.common.exceptions as seleniumException
 import warnings  # hide the warnings of phantomjs being deprecated
+from selenium.webdriver.common.by import By
+import selenium.webdriver.remote.webelement
 
 warnings.filterwarnings("ignore", category=UserWarning, module="selenium")
 
@@ -22,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def build_chrome_driver(
-    use_local_binary, selenium_version_ge_4100, setup_credential, user_agent, log_path
+    use_local_binary,  setup_credential, user_agent, log_path
 ):
     from selenium.webdriver.chrome.options import Options
 
@@ -33,87 +38,37 @@ def build_chrome_driver(
     opts.add_argument("user-agent={}".format(user_agent))
 
     kwargs = dict()
-    if selenium_version_ge_4100:
-        kwargs["options"] = opts
-    else:
-        kwargs["chrome_options"] = opts
+    kwargs["options"] = opts
 
-    if selenium_version_ge_4100:
-        from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.service import Service
 
-        service = Service(**kwargs, log_file=log_path)
-        kwargs = dict(
-            service=service,
-            options=opts,
-        )
-    else:
-        if use_local_binary:
-            # newer selenium helps us to auto-download executable
-            from .binary_downloader.chromedriver import ChromedriverDownloader
-
-            kwargs["executable_path"] = ChromedriverDownloader().get_bin()
-        kwargs.update(
-            dict(
-                service_log_path=log_path,
-                chrome_options=opts,
-            )
-        )
+    service = Service(**kwargs, log_file=log_path)
+    kwargs = dict(
+        service=service,
+        options=opts,
+    )
     return webdriver.Chrome(**kwargs)
 
 
 def build_firefox_driver(
-    use_local_binary, selenium_version_ge_4100, setup_credential, user_agent, log_path
+    use_local_binary, setup_credential, user_agent, log_path
 ):
     profile = webdriver.FirefoxProfile()
     profile.set_preference("general.useragent.override", user_agent)
     kwargs = dict()
 
-    if selenium_version_ge_4100:
-        from selenium.webdriver.firefox.service import Service
-        from selenium.webdriver.firefox.options import Options
+    from selenium.webdriver.firefox.service import Service
+    from selenium.webdriver.firefox.options import Options
 
-        option = Options()
-        option.profile = profile
+    option = Options()
+    option.profile = profile
 
-        service = Service(**kwargs, log_file=log_path)
-        kwargs = dict(
-            service=service,
-            options=option,
-        )
-    else:
-        if use_local_binary:
-            from .binary_downloader.firefoxdriver import FirefoxDownloader
-
-            kwargs["executable_path"] = FirefoxDownloader().get_bin()
-        kwargs.update(
-            dict(
-                service_log_path=log_path,
-                firefox_profile=profile,
-            )
-        )
-    return webdriver.Firefox(**kwargs)
-
-
-def build_phantomjs_driver(
-    use_local_binary, selenium_version_ge_4100, setup_credential, user_agent, log_path
-):
-    dcap = dict()
-    dcap.update(DesiredCapabilities.PHANTOMJS)
-    dcap["phantomjs.page.settings.userAgent"] = (
-        "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 "
-        "(KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25"
+    service = Service(**kwargs, log_file=log_path)
+    kwargs = dict(
+        service=service,
+        options=option,
     )
-    kwargs = {
-        "desired_capabilities": dcap,
-        "service_log_path": log_path,
-    }
-
-    if use_local_binary:
-        from .binary_downloader.phantomjs import PhantomjsDownloader
-
-        kwargs["executable_path"] = PhantomjsDownloader().get_bin()
-
-    return webdriver.PhantomJS(**kwargs)
+    return webdriver.Firefox(**kwargs)
 
 
 class EchoDownloader(object):
@@ -126,13 +81,14 @@ class EchoDownloader(object):
         password,
         setup_credential,
         use_local_binary=False,
-        webdriver_to_use="phantomjs",
+        webdriver_to_use="chrome",
         interactive_mode=False,
     ):
         self._course = course
-        root_path = os.path.dirname(os.path.abspath(sys.modules["__main__"].__file__))
+        # root_path = os.path.dirname(os.path.abspath(sys.modules["__main__"].__file__))
+        base = Path(__file__).parent
         if output_dir == "":
-            output_dir = root_path
+            output_dir = base
         self._output_dir = output_dir
         self._date_range = date_range
         self._username = username
@@ -141,41 +97,27 @@ class EchoDownloader(object):
 
         self.regex_replace_invalid = re.compile(r"[\\\\/:*?\"<>|]")
 
-        # define a log path for phantomjs to output, to prevent hanging due to PIPE being full
-        log_path = os.path.join(root_path, "webdriver_service.log")
+        log_path = base / "webdriver_service.log"
 
         self._useragent = "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25"
-        # self._driver = webdriver.PhantomJS()
-
-        if webdriver_to_use == "phantomjs":
-            selenium_major_version = int(selenium.__version__.split(".")[0])
-            if selenium_major_version >= 4:
-                print("============================================================")
-                print("WARNING: PhantomJS support had been removed in in selenium")
-                print("         version 4. If this app errors out later on, consider")
-                print("         installing earlier version of selenium.")
-                print("         e.g. pip3 install selenium==3.14")
-                print(
-                    "         (see https://github.com/SeleniumHQ/selenium/blob/58122b261a5f5406da8e5252c9ab54c464da7aa8/py/CHANGES#L324)"
-                )
-                print("============================================================")
-
         if webdriver_to_use == "chrome":
-            driver_builder = build_chrome_driver
-        elif webdriver_to_use == "firefox":
-            driver_builder = build_firefox_driver
-        else:
-            driver_builder = build_phantomjs_driver
+            driver_builder = build_chrome_driver(
+                use_local_binary=use_local_binary,
+                # selenium_version_ge_4100=(
+                # ),
+                setup_credential=setup_credential,
+                user_agent=self._useragent,
+                log_path=log_path,
 
-        self._driver = driver_builder(
-            use_local_binary=use_local_binary,
-            selenium_version_ge_4100=(
-                naive_versiontuple(selenium.__version__) >= naive_versiontuple("4.10.0")
-            ),
-            setup_credential=setup_credential,
-            user_agent=self._useragent,
-            log_path=log_path,
-        )
+            )
+        elif webdriver_to_use == "firefox":
+
+            self._driver = build_firefox_driver(
+                use_local_binary=use_local_binary,
+                setup_credential=setup_credential,
+                user_agent=self._useragent,
+                log_path=log_path,
+            )
 
         self.setup_credential = setup_credential
         # Monkey Patch, set the course's driver to the one from .downloader
@@ -240,29 +182,35 @@ class EchoDownloader(object):
                 )
         # Input username and password:
         # user_name = self._driver.find_element_by_id('j_username')
-        user_name = self.find_element_by_partial_id("username")
+
+        def getId(id, retries = 10)->selenium.webdriver.remote.webelement.WebElement:
+            rv = self.find_element_by_partial_id(id)
+            for _ in range(retries):
+                rv = self.find_element_by_partial_id(id)
+                if rv is not None:
+                    break
+                time.sleep(0.1)
+            assert rv is not None, f"Failed to find element with id {id}"
+            return rv
+        user_name = getId("username")
         user_name.clear()
         user_name.send_keys(self._username)
 
         # user_passwd = self._driver.find_element_by_id('j_password')
-        user_passwd = self.find_element_by_partial_id("password")
+        user_passwd = getId("password")
         user_passwd.clear()
         user_passwd.send_keys(self._password)
 
         try:
-            login_btn = self._driver.find_element_by_id("login-btn")
+            login_btn = getId("login-btn")
             login_btn.submit()
         except seleniumException.NoSuchElementException:
-            # try submit via enter key
-            from selenium.webdriver.common.keys import Keys
-
             user_passwd.send_keys(Keys.RETURN)
 
-        # test if the login is success
-        if self.find_element_by_partial_id("username") is not None:
-            print("Failed!")
-            print("  > Failed to login, is your username/password correct...?")
-            raise EchoLoginError(self._driver)
+        # if self.find_element_by_partial_id("username") is not None:
+        #     print("Failed!")
+        #     print("  > Failed to login, is your username/password correct...?")
+        # raise EchoLoginError(self._driver)
 
     def download_all(self):
         if self.setup_credential:
@@ -377,7 +325,8 @@ class EchoDownloader(object):
 
     def find_element_by_partial_id(self, id):
         try:
-            return self._driver.find_element_by_xpath(
+            return self._driver.find_element(
+                By.XPATH,
                 "//*[contains(@id,'{0}')]".format(id)
             )
         except seleniumException.NoSuchElementException:
