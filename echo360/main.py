@@ -6,6 +6,8 @@ import logging
 import time
 import selenium
 from datetime import datetime
+from pathlib import Path
+import selenium.common.exceptions
 
 try:
     import pick
@@ -347,9 +349,7 @@ def main():
     )
 
     _LOGGER.debug(
-        '>>> Download will use "{}" webdriver from {} executable <<<'.format(
-            binary_type, "LOCAL" if use_local_binary else "GLOBAL"
-        )
+        f'>>> Download will use "{webdriver_to_use}" webdriver from {binary_downloader.get_bin()} executable <<<'
     )
     if setup_credential:
         run_setup_credential(
@@ -408,10 +408,7 @@ def run_setup_credential(webdriver, url, echo360_cloud=False, manual=False):
                     break
                 time.sleep(2)
             else:
-                if version_info[0] > 2:
-                    user_inputs = input("> Type 'continue' and press [enter]\n")
-                else:
-                    user_inputs = raw_input("> Type 'continue' and press [enter]\n")
+                user_inputs = input("> Type 'continue' and press [enter]\n")
                 if user_inputs.lower() == "continue":
                     break
     except KeyboardInterrupt:
@@ -421,8 +418,9 @@ def run_setup_credential(webdriver, url, echo360_cloud=False, manual=False):
 def setup_logging(enable_degbug=False):
     # set up logging to file - see previous section for more details
     logging_level = logging.DEBUG if enable_degbug else logging.INFO
-    root_path = os.path.dirname(os.path.abspath(sys.modules["__main__"].__file__))
-    log_path = os.path.join(root_path, "echo360Downloader.log")
+    # root_path = Path(os.path.dirname(os.path.abspath(sys.modules["__main__"].__file__))
+    root_path = Path(__file__).parent
+    log_path = root_path / "echo360Downloader.log"
     logging.basicConfig(
         level=logging_level,
         format="[%(levelname)s: %(asctime)s] %(name)-12s %(message)s",

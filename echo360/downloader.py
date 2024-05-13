@@ -298,8 +298,8 @@ class EchoDownloader(object):
                 sub_lecture_num = lecture_number + 1
                 # use a friendly way to name sub-part lectures
                 if len(sub_videos) > 1:
-                    sub_lecture_num = "{}.{}".format(sub_lecture_num, sub_i + 1)
-                title = "Lecture {} [{}]".format(sub_lecture_num, sub_video.title)
+                    sub_lecture_num = f"{sub_lecture_num}.{sub_i + 1}"
+                title = f"Lecture {sub_lecture_num} [{sub_video.title}]"
                 filename = self._get_filename(
                     self._course.course_id, sub_video.date, title
                 )
@@ -317,11 +317,9 @@ class EchoDownloader(object):
             videos_to_be_download = [videos_to_be_download[s[1]] for s in selected]
 
         print("=" * 60)
-        print("    Course: {0}".format(self._course.nice_name))
+        print(f"    Course: {self._course.nice_name}")
         print(
-            "      Total videos to download: {0} out of {1}".format(
-                len(videos_to_be_download), len(videos)
-            )
+            f"      Total videos to download: {len(videos_to_be_download)} out of {len(videos)}"
         )
         print("=" * 60)
 
@@ -329,8 +327,8 @@ class EchoDownloader(object):
         for filename, video in videos_to_be_download:
             if video.url is False:
                 print(
-                    ">> Skipping Lecture '{0}' as it says it does "
-                    "not contain any video.".format(filename)
+                    f">> Skipping Lecture '{filename}' as it says it does "
+                    "not contain any video."
                 )
             else:
                 if video.download(self._output_dir, filename):
@@ -352,9 +350,9 @@ class EchoDownloader(object):
     def _get_filename(self, course, date, title):
         if course:
             # add [:150] to avoid filename too long exception
-            filename = "{} - {} - {}".format(course, date, title[:150])
+            filename = f"{course} - {date} - {title[:150]}"
         else:
-            filename = "{} - {}".format(date, title[:150])
+            filename = f"{date} - {title[:150]}"
         # replace invalid character for files
         return self.regex_replace_invalid.sub("_", filename)
 
@@ -368,13 +366,13 @@ class EchoDownloader(object):
 
     def success_msg(self, course_name, videos):
         bar = "=" * 65
-        msg = "\n{0}\n".format(bar)
-        msg += "    Course: {0}".format(self._course.nice_name)
-        msg += "\n{0}\n".format(bar)
+        msg = f"\n{bar}\n"
+        msg += f"    Course: {self._course.nice_name}\n"
+        msg += f"{bar}\n"
         msg += "    Successfully downloaded:\n"
         for i in videos:
-            msg += "        {}\n".format(i)
-        msg += "{0}\n".format(bar)
+            msg += f"        {i}\n"
+        msg += f"{bar}\n"
         return msg
 
     def find_element_by_partial_id(self, id):

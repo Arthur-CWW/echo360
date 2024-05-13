@@ -9,7 +9,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 
-class BinaryDownloader(object):
+class BinaryDownloader:
     _name = None
     # need to overide
     _os_linux_32:str
