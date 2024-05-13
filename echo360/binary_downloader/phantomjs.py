@@ -18,12 +18,12 @@ class PhantomjsDownloader(BinaryDownloader):
 
     def get_download_link(self):
         os_suffix = self.get_os_suffix()
-        filename = "phantomjs-{0}-{1}".format(self._version, os_suffix)
+        filename = f"phantomjs-{self._version}-{os_suffix}"
         if "linux" in os_suffix:
-            filename = "{0}.tar.bz2".format(filename)
+            filename = f"{filename}.tar.bz2"
         else:
-            filename = "{0}.zip".format(filename)
-        download_link = "{0}/{1}".format(self._download_link_root, filename)
+            filename = f"{filename}.zip"
+        download_link = f"{self._download_link_root}/{filename}"
         return download_link, filename
 
     def get_bin_root_path(self):
@@ -31,9 +31,7 @@ class PhantomjsDownloader(BinaryDownloader):
 
     def get_bin(self):
         extension = ".exe" if "windows" in self.get_os_suffix() else ""
-        return "{0}/phantomjs-{1}-{2}/bin/phantomjs{3}".format(
-            self.get_bin_root_path(), self._version, self.get_os_suffix(), extension
-        )
+        return f"{self.get_bin_root_path()}/phantomjs-{self._version}-{self.get_os_suffix()}/bin/phantomjs{extension}"
 
     def download(self):
         super(PhantomjsDownloader, self).download()
