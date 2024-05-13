@@ -10,6 +10,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class BinaryDownloader(object):
+    _name = None
+    # need to overide
+    _os_linux_32:str
+    _os_linux_64:str
+    _os_windows_32:str
+    _os_windows_64:str
+    _os_darwin_32:str
+    _os_darwin_64:str
+    _os_darwin_arm:str
     def __init__(self):
         raise NotImplementedError
 
@@ -17,22 +26,22 @@ class BinaryDownloader(object):
         arch = "64" if sys.maxsize > 2**32 else "32"
         if "linux" in sys.platform:
             if arch == "64":
-                return "linux_64"
+                return self._os_linux_64
             else:
-                return "linux_32"
+                return self._os_linux_32
         elif "win32" in sys.platform:
             if arch == "64":
-                return "windows_64"
+                return self._os_windows_64
             else:
-                return "windows_32"
+                return self._os_windows_32
         elif "darwin" in sys.platform:
             # detect if this is using arm processor (e.g. M1/M2 Mac)
             if platform.processor() == "arm":
-                return "darwin_arm"
+                return self._os_darwin_arm
             if arch == "64":
-                return "darwin_64"
+                return self._os_darwin_64
             else:
-                return "darwin_32"
+                return self._os_darwin_32
         else:
             raise Exception("NON-EXISTING OS VERSION")
 
@@ -59,21 +68,8 @@ class BinaryDownloader(object):
         # remove existing binary file or folder
         wget.download(link, out=f"{bin_path}/{filename}")
         print(f'\r\n>> Extracting archive file "{filename}"')
-        if sys.version_info >= (3, 0):  # compatibility for python 2 & 3
-            shutil.unpack_archive(
-                f"{bin_path}/{filename}", extract_dir=bin_path
-            )
-        else:
-            if ".zip" in filename:
-                import zipfile
-
-                with zipfile.ZipFile("{0}/{1}".format(bin_path, filename), "r") as zip:
-                    zip.extractall(bin_path)
-            elif ".tar" in filename:
-                import tarfile
-
-                with tarfile.open("{0}/{1}".format(bin_path, filename)) as tar:
-                    tar.extractall(path=bin_path)
-        # Make the extracted bin executable
+        shutil.unpack_archive(
+            f"{bin_path}/{filename}", extract_dir=bin_path
+        )
         st = os.stat(self.get_bin())
         os.chmod(self.get_bin(), st.st_mode | stat.S_IEXEC)
