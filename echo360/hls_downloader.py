@@ -7,6 +7,7 @@ import time
 import tqdm
 
 from .echo_exceptions import HlsDownloaderError
+import requests.adapters
 
 
 def urljoin(a, b):
@@ -45,6 +46,8 @@ def update_progress(current, total, title=None):
 
 
 class Downloader:
+    _result_file_name:str
+
     def __init__(self, pool_size, retry=3, selenium_cookies=None):
         self.pool = Pool(pool_size)
         self.session = self._get_http_session(
@@ -55,7 +58,6 @@ class Downloader:
         self.succed = {}
         self.failed = []
         self.ts_total = 0
-        self._result_file_name = None
 
     def _get_http_session(
         self, pool_connections, pool_maxsize, max_retries, selenium_cookies=None
