@@ -1,3 +1,4 @@
+from datetime import date
 import time
 import dateutil.parser
 import os
@@ -7,7 +8,7 @@ import re
 
 from pathlib import Path
 
-from .course import EchoCloudCourse
+from .course import EchoCloudCourse, EchoCourse
 from .echo_exceptions import EchoLoginError
 # from .utils import naive_versiontuple
 
@@ -27,9 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def build_chrome_driver(
-    use_local_binary,  setup_credential, user_agent, log_path
+    *,  setup_credential, user_agent, log_path
 ):
     from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
 
     opts = Options()
     if not setup_credential:
@@ -39,19 +41,15 @@ def build_chrome_driver(
 
     kwargs = dict()
     kwargs["options"] = opts
-
-    from selenium.webdriver.chrome.service import Service
-
     service = Service(**kwargs, log_file=log_path)
-    kwargs = dict(
+    return webdriver.Chrome(
         service=service,
         options=opts,
     )
-    return webdriver.Chrome(**kwargs)
 
 
 def build_firefox_driver(
-    use_local_binary, setup_credential, user_agent, log_path
+    *,  user_agent, log_path
 ):
     profile = webdriver.FirefoxProfile()
     profile.set_preference("general.useragent.override", user_agent)
@@ -62,30 +60,27 @@ def build_firefox_driver(
 
     option = Options()
     option.profile = profile
-
     service = Service(**kwargs, log_file=log_path)
-    kwargs = dict(
+    return webdriver.Firefox(
         service=service,
         options=option,
     )
-    return webdriver.Firefox(**kwargs)
 
 
 class EchoDownloader(object):
     def __init__(
         self,
-        course,
-        output_dir,
-        date_range,
-        username,
-        password,
+        course: EchoCourse,
+        output_dir: Path,
+        date_range: tuple[date, date],
+        username: str,
+        password: str,
         setup_credential,
         use_local_binary=False,
         webdriver_to_use="chrome",
         interactive_mode=False,
     ):
         self._course = course
-        # root_path = os.path.dirname(os.path.abspath(sys.modules["__main__"].__file__))
         base = Path(__file__).parent
         if output_dir == "":
             output_dir = base
@@ -101,10 +96,7 @@ class EchoDownloader(object):
 
         self._useragent = "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25"
         if webdriver_to_use == "chrome":
-            driver_builder = build_chrome_driver(
-                use_local_binary=use_local_binary,
-                # selenium_version_ge_4100=(
-                # ),
+            self._driver = build_chrome_driver(
                 setup_credential=setup_credential,
                 user_agent=self._useragent,
                 log_path=log_path,
@@ -113,8 +105,6 @@ class EchoDownloader(object):
         elif webdriver_to_use == "firefox":
 
             self._driver = build_firefox_driver(
-                use_local_binary=use_local_binary,
-                setup_credential=setup_credential,
                 user_agent=self._useragent,
                 log_path=log_path,
             )
@@ -224,7 +214,7 @@ class EchoDownloader(object):
             self.login()
         sys.stdout.write(">> Retrieving echo360 Course Info... ")
         sys.stdout.flush()
-        videos = self._course.get_videos().videos
+        videos = self._course.videos.videos
         print("Done!")
         # change the output directory to be inside a folder named after the course
         self._output_dir = os.path.join(
@@ -235,7 +225,7 @@ class EchoDownloader(object):
 
         filtered_videos = [video for video in videos if self._in_date_range(video.date)]
         videos_to_be_download = []
-        for video in reversed(filtered_videos):  # reverse so we download newest first
+        for video in reversed(filtered_videos):
             lecture_number = self._find_pos(videos, video)
             # Sometimes a video could have multiple part. This special method returns a
             # generator where: (i) if it's a multi-part video it will contains multiple
@@ -341,4 +331,4 @@ class EchoDownloader(object):
         )
         if uuid is not None:
             uuid = uuid.groups()[0]
-            self._course._uuid = uuid
+            self._course.uuid = uuid
