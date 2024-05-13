@@ -11,17 +11,18 @@ from .videos import EchoVideos, EchoCloudVideos
 import selenium.common.exceptions
 import selenium.webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.common.by import By
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class EchoCourse(object):
-    def __init__(self, uuid,driver:WebDriver, hostname=None, alternative_feeds=False):
+class EchoCourse:
+    driver:WebDriver
+    def __init__(self, uuid, hostname=None, alternative_feeds=False):
         self._course_id:Optional[str] = None
         self._course_name:Optional[str] = None
         self._uuid:str = uuid
         self._videos:Optional[EchoVideos] = None
-        self.driver:WebDriver =driver
         self._alternative_feeds = alternative_feeds
         if hostname is None:
             self._hostname = "https://view.streaming.sydney.edu.au:8443"
@@ -108,7 +109,7 @@ class EchoCourse(object):
                 self.video_url,
                 self.driver.page_source,
             )
-            json_str = self.driver.find_element_by_tag_name("pre").text
+            json_str = self.driver.find_element(By.TAG_NAME, "pre").text
         except ValueError as e:
             raise Exception("Unable to retrieve JSON (course_data) from url", e)
         self.course_data = json.loads(json_str)
